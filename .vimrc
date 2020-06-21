@@ -124,7 +124,8 @@ inoremap <> <>i
 cnoremap w!! w !sudo tee % >/dev/null
 
 " add your tags files
-set tags+=;
+" ctags -R --c-kinds=+lpx --c++-kinds=+lpx --fields=+KSlianmtz --extra=+fq .
+set tags+=../tags;
 
 " add your path (include files etc.)
 set path+=$PWD/**
