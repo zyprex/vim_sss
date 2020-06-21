@@ -15,6 +15,8 @@ set define="^\(#\s*define\|[a-z]*\s*const\s*[a-z]*\)"
 set complete=.,w,b,u,t,i
 set completeopt=menuone,noselect pumheight=0 pumwidth=0
 " set completepopup=height:10,width:10,align:menu,border:on,highlight:IncSearch
+hi! Pmenu    ctermfg=Black ctermbg=DarkGrey
+hi! PmenuSel ctermfg=Black ctermbg=White
 set list listchars=tab:»\ ,trail:·,nbsp:_,precedes:<,extends:>
 hi! User1 cterm=inverse,bold ctermfg=Red    ctermbg=Black guifg=Black guibg=Red
 hi! User2 cterm=inverse,bold ctermfg=Green  ctermbg=Black guifg=Black guibg=Green
@@ -35,6 +37,7 @@ endfunction
 inoremap <Tab> <C-R>=CleverTab()<CR>
 inoremap<expr> <Cr> pumvisible() ? "\<C-y>" : "\<C-g>u\<Cr>"
 
+
 function! InsAutoPmenu()
   let l:charList = [
         \ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
@@ -42,9 +45,16 @@ function! InsAutoPmenu()
         \ 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
         \ 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
         \ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ]
-  for key in l:charList
-    execute printf("inoremap <expr><silent> %s pumvisible() ? \'%s\' : \'%s<C-n>\'", key, key, key)
-  endfor
+  if mapcheck("a","i") == ""
+      for key in l:charList
+          execute printf("inoremap<expr><silent> %s pumvisible() ? \'%s\' : \'%s<C-n>\'"
+                    \ ,key,key,key)
+      endfor
+  else
+      for key in l:charList
+          execute "iunmap " . key
+      endfor
+  endif
 endfunction
 call InsAutoPmenu()
 
@@ -129,3 +139,4 @@ set tags+=../tags;
 
 " add your path (include files etc.)
 set path+=$PWD/**
+set path+=/usr/include/x86_64-linux-gnu
