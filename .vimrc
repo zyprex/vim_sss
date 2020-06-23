@@ -13,7 +13,7 @@ set hidden nu rnu laststatus=2 wrap linebreak breakindent termencoding=utf-8 enc
 set wildmenu wildmode=full wildignore+=**/.git/**,**/__pycache__/**,**/venv/**,**/node_modules/**,**/dist/**,**/build/**,*.o,*.pyc,*.swp
 set define="^\(#\s*define\|[a-z]*\s*const\s*[a-z]*\)"
 set complete=.,w,b,u,t,i
-set completeopt=menuone,noselect pumheight=0 pumwidth=0
+set completeopt=menuone,noselect,preview pumheight=0 pumwidth=0 previewheight=7
 " set completepopup=height:10,width:10,align:menu,border:on,highlight:IncSearch
 hi! Pmenu    ctermfg=Black ctermbg=DarkGrey
 hi! PmenuSel ctermfg=Black ctermbg=White
@@ -34,9 +34,9 @@ function! CleverTab()
         return "\<C-N>"
     endif
 endfunction
-inoremap <Tab> <C-R>=CleverTab()<CR>
-inoremap<expr> <Cr> pumvisible() ? "\<C-y>" : "\<C-g>u\<Cr>"
-
+inoremap       <Tab>   <C-R>=CleverTab()<CR>
+inoremap<expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<C-g>u\<S-Tab>"
+inoremap<expr> <CR>    pumvisible() ? "\<C-y>" : "\<C-g>u\<Cr>"
 
 function! InsAutoPmenu()
   let l:charList = [
@@ -59,7 +59,7 @@ endfunction
 call InsAutoPmenu()
 
 function! QuickComment()
-    let l:commentSymbol = {'vim':'" ', 'c':'\/\/','cpp':'\/\/'}
+    let l:commentSymbol = { 'vim':'" ', 'c':'\/\/','cpp':'\/\/','sh':'# ','ruby':'# ', 'python':'# '  }
     let cSyml = has_key(l:commentSymbol, &filetype) ?
                   \ get(l:commentSymbol, &filetype) : ''
     if cSyml == ''
@@ -83,11 +83,11 @@ nnoremap s <NOP>
 let mapleader='s'
 let g:netrw_banner=0
 let g:netrw_liststyle = 2
-let g:netrw_list_hide= '.*\.swp$'
-let g:netrw_sort_by = "exten"
-let g:netrw_sizestyle = "H"
-let g:netrw_winsize = 2
-let g:netrw_special_syntax = 1
+let g:netrw_list_hide='.*\.swp$'
+let g:netrw_sort_by="exten"
+let g:netrw_sizestyle="H"
+let g:netrw_winsize=2
+let g:netrw_special_syntax=1
 nnoremap <F2> :Sexplore<CR>
 nnoremap <leader>w :w<cr>
 nnoremap \ :noh<bar>redraw!<cr>
@@ -134,9 +134,37 @@ inoremap <> <>i
 cnoremap w!! w !sudo tee % >/dev/null
 
 " add your tags files
-" ctags -R --c-kinds=+lpx --c++-kinds=+lpx --fields=+KSlianmtz --extra=+fq .
 set tags+=../tags;
+let g:ctags_bin="ctags-universal"
+let g:ctags_param=" --c-kinds=+pxz --c++-kinds=+ALNUp --fields=NPKSaistz --extras=+fgqr "
+function GenerateTagfiles()
+    if exists("*mkdir") | call mkdir("~/tagfiles","p") | endif
+    cd ~/tagfiles
+    let l:incdir = {
+                \ "cc":"/usr/include",
+                \ "py":"/usr/lib/python3.7",
+                \ "rb":"/usr/lib/ruby/2.5.0" }
+    for [key, value] in items(l:incdir)
+        echo key " " value
+        call system(g:ctags_bin.g:ctags_param." -f ".key." -R ".value)
+    endfor
+    echo "all work done!"
+endfunction
+
+augroup TAGFILES
+    autocmd!
+    autocmd FileType c,cpp  setlocal tags+=~/tagfiles/cc
+    autocmd FileType python setlocal tags+=~/tagfiles/py
+    autocmd FileType ruby   setlocal tags+=~/tagfiles/rb
+augroup END
+autocmd BufWritePost * call system(g:ctags_bin.g:ctags_param." -f - > ~/tagfiles/_ -R .")
+set tags+=~/tagfiles/_
 
 " add your path (include files etc.)
 set path+=$PWD/**
-set path+=/usr/include/x86_64-linux-gnu
+augroup ADDPATHS
+    autocmd!
+    autocmd FileType c,cpp  setlocal path+=/usr/include/x86_64-linux-gun
+    autocmd FileType python setlocal path+=/usr/lib/python3.7
+    autocmd FileType ruby   setlocal path+=/usr/lib/ruby/2.5.0
+augroup END
