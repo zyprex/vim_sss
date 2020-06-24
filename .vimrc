@@ -15,15 +15,47 @@ set define="^\(#\s*define\|[a-z]*\s*const\s*[a-z]*\)"
 set complete=.,w,b,u,t,i
 set completeopt=menuone,noselect,preview pumheight=0 pumwidth=0 previewheight=7
 " set completepopup=height:10,width:10,align:menu,border:on,highlight:IncSearch
-hi! Pmenu    ctermfg=Black ctermbg=DarkGrey
-hi! PmenuSel ctermfg=Black ctermbg=White
+hi! Pmenu        cterm=NONE ctermfg=Black ctermbg=DarkGrey
+hi! PmenuSel     cterm=NONE ctermfg=Black ctermbg=Grey
+hi! StatusLine   cterm=underline,bold ctermfg=Green ctermbg=Black
+hi! StatusLineNC cterm=underline ctermfg=DarkGreen ctermbg=Black
+hi! TabLineFill  cterm=underline ctermfg=DarkGrey ctermbg=Black
+hi! TabLine      cterm=underline ctermfg=DarkCyan ctermbg=Black
+hi! TabLineSel   cterm=NONE ctermfg=Black ctermbg=DarkGreen
+hi! VertSplit    cterm=NONE ctermfg=LightGreen ctermbg=Black
+hi! Search ctermbg=DarkGrey
 set list listchars=tab:»\ ,trail:·,nbsp:_,precedes:<,extends:>
-hi! User1 cterm=inverse,bold ctermfg=Red    ctermbg=Black guifg=Black guibg=Red
-hi! User2 cterm=inverse,bold ctermfg=Green  ctermbg=Black guifg=Black guibg=Green
-hi! User3 cterm=inverse,bold ctermfg=Blue   ctermbg=Black guifg=Black guibg=Blue
-hi! User4 cterm=inverse,bold ctermfg=Yellow ctermbg=Black guifg=Black guibg=Yellow
+hi! User1 cterm=bold ctermfg=Black ctermbg=Red     guifg=Black guibg=Red
+hi! User2 cterm=bold ctermfg=Black ctermbg=Green   guifg=Black guibg=Green
+hi! User3 cterm=bold ctermfg=Black ctermbg=Blue    guifg=Black guibg=Blue
+hi! User4 cterm=bold ctermfg=Black ctermbg=Yellow  guifg=Black guibg=Yellow
+hi! User5 cterm=bold ctermfg=Blue ctermbg=Black  guifg=Black guibg=Yellow
+function! ExtraStatus()
+    let exstate = []
+    if &paste            |let exstate += ['paste']|endif
+    if &virtualedit != ''|let exstate += ['vedit']|endif
+    return exstate != [] ? ' {'.join(exstate,',').'} ' : ''
+endfunction
+function! GitBranchStatus()
+    let gitroot = ".git"
+    if isdirectory(gitroot)
+        return split(readfile( gitroot."/HEAD" )[0],"/")[2]
+    else
+        let dirn=split(expand("%:p"),"/")[:-3]
+        let dirl=[]
+        let path=''
+        for i in dirn|let path=path."/".i|call insert(dirl,path)|endfor
+        for i in dirl
+            if isdirectory(i."/".gitroot)
+                return split(readfile(i."/".gitroot."/HEAD")[0],"/")[2]
+            endif
+        endfor
+    endif
+    return ''
+endfunction
 set statusline=%q(%n)%<%f%1*%m%*%4*%r%*%w
-            \%=%{&ff}.%\{&fenc==\"utf-8\"?\"\":toupper(&fenc)\}%Y%5l\ Ξ\ %2c
+            \%=%5*%{ExtraStatus()}%*%{&ff}.%\{&fenc==\"utf-8\"?\"\":toupper(&fenc)\}%Y%5l\ Ξ\ %2v
+set statusline^=%3*%{GitBranchStatus()}%*
 " autocmd FileType * setlocal formatoptions-=cro "
 
 " FUNC:
@@ -38,7 +70,7 @@ inoremap       <Tab>   <C-R>=CleverTab()<CR>
 inoremap<expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<C-g>u\<S-Tab>"
 inoremap<expr> <CR>    pumvisible() ? "\<C-y>" : "\<C-g>u\<Cr>"
 
-function! InsAutoPmenu()
+function! InsAutoPmenu(complm)
   let l:charList = [
         \ 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
         \ 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
@@ -47,8 +79,8 @@ function! InsAutoPmenu()
         \ '0', '1', '2', '3', '4', '5', '6', '7', '8', '9' ]
   if mapcheck("a","i") == ""
       for key in l:charList
-          execute printf("inoremap<expr><silent> %s pumvisible() ? \'%s\' : \'%s<C-n>\'"
-                    \ ,key,key,key)
+          execute printf("inoremap<expr><silent> %s pumvisible() ? \'%s\' : \'%s%s\'"
+                    \ ,key,key,key,a:complm)
       endfor
   else
       for key in l:charList
@@ -56,7 +88,7 @@ function! InsAutoPmenu()
       endfor
   endif
 endfunction
-call InsAutoPmenu()
+call InsAutoPmenu('<C-n>')
 
 function! QuickComment()
     let l:commentSymbol = { 'vim':'" ', 'c':'\/\/','cpp':'\/\/','sh':'# ','ruby':'# ', 'python':'# '  }
@@ -72,6 +104,16 @@ function! QuickComment()
     endif
 endfunction
 command -range QuickComment <line1>,<line2>call QuickComment()
+
+function! SwitchSrcHeadFile()
+    if expand("%:e") =~ '\(c\|cpp\|cxx\)'
+        execute "e ".expand("%:r").".h"
+    elseif expand("%:e") == 'h'
+        execute "e ".expand("%:r").".c*" 
+    endif
+endfunction
+command A call SwitchSrcHeadFile()<CR>
+command P e #
 
 " KEYS:
 " use [number]+ctrl+/ comment or uncomment line
@@ -121,7 +163,8 @@ nnoremap ]op :set paste<CR>
 nnoremap [ov :set virtualedit=<CR>
 nnoremap ]ov :set virtualedit=all<CR>
 " auto-pair
-inoremap $$ $()i
+inoremap ## #{}i
+inoremap $$ ${}i
 inoremap `` ``i
 inoremap %% %%i
 inoremap '' ''i
@@ -157,7 +200,8 @@ augroup TAGFILES
     autocmd FileType python setlocal tags+=~/tagfiles/py
     autocmd FileType ruby   setlocal tags+=~/tagfiles/rb
 augroup END
-autocmd BufWritePost * call system(g:ctags_bin.g:ctags_param." -f - > ~/tagfiles/_ -R .")
+command TagGenerate call system(g:ctags_bin . g:ctags_param . " -f - > ~/tagfiles/_ -R ." )
+" autocmd BufWritePost * call system(g:ctags_bin.g:ctags_param." -f - > ~/tagfiles/_ -R .")
 set tags+=~/tagfiles/_
 
 " add your path (include files etc.)
@@ -168,3 +212,10 @@ augroup ADDPATHS
     autocmd FileType python setlocal path+=/usr/lib/python3.7
     autocmd FileType ruby   setlocal path+=/usr/lib/ruby/2.5.0
 augroup END
+
+" head line
+augroup HEADLINE
+    autocmd BufNewFile *.rb call setline(1,"\#!/usr/bin/ruby -w")
+    autocmd BufNewFile *.py call setline(1,"\#!/usr/bin/python3.7")
+augroup END
+
