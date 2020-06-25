@@ -30,24 +30,27 @@ hi! User2 cterm=bold ctermfg=Black ctermbg=Green   guifg=Black guibg=Green
 hi! User3 cterm=bold ctermfg=Black ctermbg=Blue    guifg=Black guibg=Blue
 hi! User4 cterm=bold ctermfg=Black ctermbg=Yellow  guifg=Black guibg=Yellow
 hi! User5 cterm=bold ctermfg=Blue ctermbg=Black  guifg=Black guibg=Yellow
-function! ExtraStatus()
+fu! ExtraStatus()
     let exstate = []
     if &paste            |let exstate += ['paste']|endif
     if &virtualedit != ''|let exstate += ['vedit']|endif
     return exstate != [] ? ' {'.join(exstate,',').'} ' : ''
 endfunction
-function! GitBranchStatus()
+
+function! GitBranchName()
     let gitroot = ".git"
     if isdirectory(gitroot)
-        return split(readfile( gitroot."/HEAD" )[0],"/")[2]
+        return split(readfile(gitroot."/HEAD")[0],"/")[2]
     else
-        let dirn=split(expand("%:p"),"/")[:-3]
+        let pt = "/"
+        let dirn=split(expand("%:p"),pt)[:-3]
         let dirl=[]
         let path=''
-        for i in dirn|let path=path."/".i|call insert(dirl,path)|endfor
+        for i in dirn|let path=path.pt.i|call insert(dirl,path)|endfor
         for i in dirl
-            if isdirectory(i."/".gitroot)
-                return split(readfile(i."/".gitroot."/HEAD")[0],"/")[2]
+            let gitpath = i.pt.gitroot
+            if isdirectory(gitpath)
+                return split(readfile(gitpath."/HEAD")[0],"/")[2]
             endif
         endfor
     endif
@@ -55,7 +58,7 @@ function! GitBranchStatus()
 endfunction
 set statusline=%q(%n)%<%f%1*%m%*%4*%r%*%w
             \%=%5*%{ExtraStatus()}%*%{&ff}.%\{&fenc==\"utf-8\"?\"\":toupper(&fenc)\}%Y%5l\ Ξ\ %2v
-set statusline^=%3*%{GitBranchStatus()}%*
+set statusline^=%3*%{GitBranchName()}%*
 " autocmd FileType * setlocal formatoptions-=cro "
 
 " FUNC:
@@ -82,13 +85,9 @@ function! InsAutoPmenu(complm)
           execute printf("inoremap<expr><silent> %s pumvisible() ? \'%s\' : \'%s%s\'"
                     \ ,key,key,key,a:complm)
       endfor
-  else
-      for key in l:charList
-          execute "iunmap " . key
-      endfor
   endif
 endfunction
-call InsAutoPmenu('<C-n>')
+autocmd! BufEnter * call InsAutoPmenu( &omnifunc?'<C-X><C-O>':'<C-N>' )
 
 function! QuickComment()
     let l:commentSymbol = { 'vim':'" ', 'c':'\/\/','cpp':'\/\/','sh':'# ','ruby':'# ', 'python':'# '  }
@@ -103,7 +102,7 @@ function! QuickComment()
                     \ substitute(line, '^'       , cSyml,"g") )
     endif
 endfunction
-command -range QuickComment <line1>,<line2>call QuickComment()
+command! -range QuickComment <line1>,<line2>call QuickComment()
 
 function! SwitchSrcHeadFile()
     if expand("%:e") =~ '\(c\|cpp\|cxx\)'
@@ -112,8 +111,8 @@ function! SwitchSrcHeadFile()
         execute "e ".expand("%:r").".c*" 
     endif
 endfunction
-command A call SwitchSrcHeadFile()<CR>
-command P e #
+command! A call SwitchSrcHeadFile()<CR>
+command! P e #
 
 " KEYS:
 " use [number]+ctrl+/ comment or uncomment line
@@ -173,6 +172,7 @@ inoremap () ()i
 inoremap [] []i
 inoremap {} {}i
 inoremap <> <>i
+inoremap {<CR> {}i<CR>O
 " force save!!
 cnoremap w!! w !sudo tee % >/dev/null
 
@@ -180,13 +180,14 @@ cnoremap w!! w !sudo tee % >/dev/null
 set tags+=../tags;
 let g:ctags_bin="ctags-universal"
 let g:ctags_param=" --c-kinds=+pxz --c++-kinds=+ALNUp --fields=NPKSaistz --extras=+fgqr "
-function GenerateTagfiles()
+function! GenerateTagfiles()
     if exists("*mkdir") | call mkdir("~/tagfiles","p") | endif
     cd ~/tagfiles
     let l:incdir = {
                 \ "cc":"/usr/include",
                 \ "py":"/usr/lib/python3.7",
-                \ "rb":"/usr/lib/ruby/2.5.0" }
+                \ "rb":"/usr/lib/ruby/2.5.0"
+                \}
     for [key, value] in items(l:incdir)
         echo key " " value
         call system(g:ctags_bin.g:ctags_param." -f ".key." -R ".value)
@@ -200,7 +201,7 @@ augroup TAGFILES
     autocmd FileType python setlocal tags+=~/tagfiles/py
     autocmd FileType ruby   setlocal tags+=~/tagfiles/rb
 augroup END
-command TagGenerate call system(g:ctags_bin . g:ctags_param . " -f - > ~/tagfiles/_ -R ." )
+command! TagGenerate call system(g:ctags_bin . g:ctags_param . " -f - > ~/tagfiles/_ -R ." )
 " autocmd BufWritePost * call system(g:ctags_bin.g:ctags_param." -f - > ~/tagfiles/_ -R .")
 set tags+=~/tagfiles/_
 
